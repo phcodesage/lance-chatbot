@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assistant AI Bot</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="vendor/bootstrap.min.css">
+    <link href="/vendor/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 
 <body>
@@ -40,9 +40,23 @@
         <div class="chat-container">
             <div id="chat-box" class="chat-box"></div>
             <div class="message-input-container">
-                <textarea id="message-input" placeholder="Type your message here..." class="message-input"
-                    rows="4"></textarea>
-                <button id="sendButton" class="btn-lg btn-success">Send</button>
+                <textarea id="message-input" placeholder="Type your message here..." class="message-input" rows="4"></textarea>
+                <button id="expandButton" class="expand-button">
+                    <svg id="expandIcon" width="24px" height="24px" viewBox="0 -4.5 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" fill="#ffff">
+                        <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                  <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                  <g id="SVGRepo_iconCarrier">
+                      <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                          <g id="Dribbble-Light-Preview" transform="translate(-140.000000, -6683.000000)" fill="#ffffff">
+                              <g id="icons" transform="translate(56.000000, 160.000000)">
+                                  <path d="M84,6532.61035 L85.4053672,6534 L94.0131154,6525.73862 L94.9311945,6526.61986 L94.9261501,6526.61502 L102.573446,6533.95545 L104,6532.58614 C101.8864,6530.55736 95.9854722,6524.89321 94.0131154,6523 C92.5472155,6524.40611 93.9757869,6523.03486 84,6532.61035" id="arrow_up[#340]"></path>
+                              </g>
+                          </g>
+                      </g>
+                  </g>
+                    </svg>
+                </button>
+                <button id="sendButton" class="btn-lg btn-success send-btn">Send</button>
             </div>
         </div>
     </div>
@@ -75,7 +89,7 @@
                         </div>
                         <div class="d-flex justify-content-end gap-2">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Inset in Chat</button>
+                            <button type="submit" class="btn btn-primary">Insert in Chat</button>
                         </div>
                     </form>
                 </div>
@@ -154,13 +168,13 @@
             </div>
         </div>
     </div>
-    
 
-    <script src="node_modules/jquery/dist/jquery.min.js"></script>
-    <script src="vendor/bootstrap.bundle.min.js"></script>
-    <script src="node_modules/showdown/dist/showdown.min.js"></script>
+    <script src="/vendor/jquery/dist/jquery.min.js"></script>
+    <script src="/vendor/showdown/dist/showdown.min.js"></script>
+    <script src="/vendor/@popperjs/core/dist/umd/popper.min.js"></script>
+    <script src="/vendor/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 
-    <script src="./script.js"></script>
+    <script type="module" src="/script.js"></script>
 </body>
 
 </html>

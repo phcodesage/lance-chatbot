@@ -1,8 +1,4 @@
-// ########################## Constants.js #########################
-
 const BASE_URL = "http://localhost:3001/api";
-
-// ########################## Script #########################
 
 const callApi = async (url, props) => {
   try {
@@ -105,7 +101,6 @@ const sleep = (milliseconds) => {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 };
 
-
 function copyText(button, divId) {
   const div = document.getElementById(divId);
   const htmlToCopy = div.innerHTML;
@@ -171,7 +166,6 @@ function createAssistantMessage(content, divId) {
   return messageContainer;
 }
 
-
 function handleEditBtn(editButton, divId) {
   const messageContent = document.getElementById(divId);
   if (!messageContent) return;
@@ -189,7 +183,6 @@ function handleEditBtn(editButton, divId) {
     saveEditedContent(editButton, divId);
   };
 }
-
 
 function saveEditedContent(editButton, divId) {
   const messageContent = document.getElementById(divId);
@@ -217,7 +210,6 @@ function saveEditedContent(editButton, divId) {
   };
 }
 
-
 function convertMarkdownToHtml(markdown) {
   const converter = new showdown.Converter();
   return converter.makeHtml(markdown);
@@ -227,9 +219,6 @@ function convertHtmlToMarkdown(html) {
   const converter = new showdown.Converter();
   return converter.makeMarkdown(html);
 }
-
-
-
 
 function editMessage(button, content, divId) {
   const div = document.getElementById(divId);
@@ -458,9 +447,14 @@ const handleModal = {
   },
   close: (modalId) => {
     const myModalEl = document.getElementById(modalId);
-    const myModal = bootstrap.Modal.getInstance(myModalEl);
-    if (myModal) {
-      myModal.hide();
+    // Directly hide the modal using Bootstrap method
+    const modalInstance = bootstrap.Modal.getInstance(myModalEl);
+    if (modalInstance) {
+      modalInstance.hide();
+    } else {
+      // Fallback for older versions of Bootstrap or if getInstance is unavailable
+      const modal = new bootstrap.Modal(myModalEl);
+      modal.hide();
     }
   },
 };
@@ -558,9 +552,6 @@ const updateSidebar = () => {
   createDirectoryStructure(sidebarElement, clientsData);
 };
 
-
-
-
 const handleHideSaveButton = (divId) => {
   const targetDiv = document.getElementById(divId);
   const parentDiv = targetDiv?.previousElementSibling;
@@ -601,7 +592,7 @@ function sortByDate(a, b) {
   return dateB - dateA; // Sort from latest to oldest
 }
 
-const handleDocuemntModal = () => {
+function handleDocuemntModal() {
   document.getElementById("DocumentModalInsertBtn").addEventListener("click", () => {
     const message = document.getElementById("DocumentModalDocumentDiv").textContent;
     handleModal.close("DocumentModal");
@@ -620,13 +611,12 @@ const handleDocuemntModal = () => {
   });
 
   document.getElementById("DocumentModalDeleteBtn").addEventListener("click", async () => {
-    const documentModalLabel = document.getElementById("DocumentModalLabel").textContent.toLowerCase();
-    const noteType = documentModalLabel.includes("treatment") ? "treatmentplan" : documentModalLabel.includes("intake") ? "intakenote" : "sessionnote";
     const noteId = document.getElementById("DocumentModalDocumentDiv").getAttribute("data-note-id");
     const clientId = localStorage.getItem("currentClientId");
+    const noteType = document.getElementById("DocumentModalDocumentDiv").getAttribute("data-note-type");
 
-    if (!noteId || !clientId) {
-      alert("Error: Note ID or Client ID is missing.");
+    if (!noteId || !clientId || !noteType) {
+      alert("Error: Note ID, Client ID, or Note Type is missing.");
       return;
     }
 
@@ -638,6 +628,7 @@ const handleDocuemntModal = () => {
       if (response.ok) {
         alert("Note deleted successfully.");
         handleModal.close("DocumentModal");
+        removeNoteFromSidebar(noteId); // Call the function to remove the note from the sidebar
         updateSidebar();
       } else {
         alert("Failed to delete note.");
@@ -647,11 +638,18 @@ const handleDocuemntModal = () => {
       alert("Failed to delete note.");
     }
   });
-};
+}
 
+
+function removeNoteFromSidebar(noteId) {
+  const noteElement = document.querySelector(`.file[data-note-id="${noteId}"]`);
+  if (noteElement) {
+    noteElement.parentElement.removeChild(noteElement);
+  }
+}
 
 // Function to build a folder with sorted files
-function buildFolder(folderName, files) {
+function buildFolder(folderName, files, clientId) {  // Pass clientId as a parameter
   const folderLi = document.createElement("li");
   folderLi.classList.add("folder");
   folderLi.textContent = folderName;
@@ -674,7 +672,8 @@ function buildFolder(folderName, files) {
       contentDiv.innerHTML = "";
       contentDiv.innerHTML = convertMarkdownToHtml(file.document);
       contentDiv.setAttribute("data-note-id", file.id);
-      localStorage.setItem("currentClientId", file.clientId); // Ensure client ID is stored for use in the delete function
+      contentDiv.setAttribute("data-note-type", folderName.toLowerCase().replace(" ", ""));
+      localStorage.setItem("currentClientId", clientId); // Set clientId in local storage
       const copyBtn = document.getElementById("DocumentModalCoptBtn");
       copyBtn.addEventListener("click", function () {
         copyText(this, "DocumentModalDocumentDiv");
@@ -705,13 +704,13 @@ function createDirectoryStructure(rootElement, clientsData) {
 
     // Create subfolders for treatment plans, intake notes, and session notes
     clientUl.appendChild(
-      buildFolder("Treatment Plan", JSON.parse(client["treatmentplan"] || "[]"))
+      buildFolder("Treatment Plan", JSON.parse(client["treatmentplan"] || "[]"), client.id)  // Pass client.id to buildFolder
     );
     clientUl.appendChild(
-      buildFolder("Intake Note", JSON.parse(client["intakenote"] || "[]"))
+      buildFolder("Intake Note", JSON.parse(client["intakenote"] || "[]"), client.id)  // Pass client.id to buildFolder
     );
     clientUl.appendChild(
-      buildFolder("Session Note", JSON.parse(client["sessionnote"] || "[]"))
+      buildFolder("Session Note", JSON.parse(client["sessionnote"] || "[]"), client.id)  // Pass client.id to buildFolder
     );
 
     clientLi.appendChild(clientUl);
@@ -732,7 +731,6 @@ function createDirectoryStructure(rootElement, clientsData) {
     });
   });
 }
-
 // ########################## Utils #########################
 
 function generateUniqueId() {
@@ -906,6 +904,46 @@ ${comments}
   return message;
 };
 
+function handleExpandButton() {
+  const expandButton = document.getElementById("expandButton");
+  const messageInput = document.getElementById("message-input");
+  const expandIcon = document.getElementById("expandIcon");
+
+  expandButton.addEventListener("click", () => {
+      messageInput.classList.toggle("expanded");
+
+      if (messageInput.classList.contains("expanded")) {
+          expandIcon.innerHTML = `
+          <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+          <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.16"></g>
+          <g id="SVGRepo_iconCarrier">
+              <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                  <g id="Dribbble-Light-Preview" transform="translate(-220.000000, -6684.000000)" fill="#ffff">
+                      <g id="icons" transform="translate(56.000000, 160.000000)">
+                          <path d="M164.292308,6524.36583 L164.292308,6524.36583 C163.902564,6524.77071 163.902564,6525.42619 164.292308,6525.83004 L172.555873,6534.39267 C173.33636,6535.20244 174.602528,6535.20244 175.383014,6534.39267 L183.70754,6525.76791 C184.093286,6525.36716 184.098283,6524.71997 183.717533,6524.31405 C183.328789,6523.89985 182.68821,6523.89467 182.29347,6524.30266 L174.676479,6532.19636 C174.285736,6532.60124 173.653152,6532.60124 173.262409,6532.19636 L165.705379,6524.36583 C165.315635,6523.96094 164.683051,6523.96094 164.292308,6524.36583" id="arrow_down-[#338]"></path>
+                      </g>
+                  </g>
+              </g>
+          </g>
+          `;
+      } else {
+          expandIcon.innerHTML = `
+          <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                  <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+                  <g id="SVGRepo_iconCarrier">
+                      <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+                          <g id="Dribbble-Light-Preview" transform="translate(-140.000000, -6683.000000)" fill="#ffffff">
+                              <g id="icons" transform="translate(56.000000, 160.000000)">
+                                  <path d="M84,6532.61035 L85.4053672,6534 L94.0131154,6525.73862 L94.9311945,6526.61986 L94.9261501,6526.61502 L102.573446,6533.95545 L104,6532.58614 C101.8864,6530.55736 95.9854722,6524.89321 94.0131154,6523 C92.5472155,6524.40611 93.9757869,6523.03486 84,6532.61035" id="arrow_up[#340]"></path>
+                              </g>
+                          </g>
+                      </g>
+                  </g>
+          `;
+      }
+  });
+}
+
 // ########################## LOAD SCRIPT #########################
 
 document.addEventListener("DOMContentLoaded", async function () {
@@ -917,4 +955,5 @@ document.addEventListener("DOMContentLoaded", async function () {
   handleDocuemntModal();
   updateSidebar();
   handelAddNewClient();
+  handleExpandButton();
 });

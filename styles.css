@@ -18,7 +18,6 @@ html {
   gap: 2;
 }
 
-
 .container-main {
   display: flex;
   height: 92vh;
@@ -74,6 +73,7 @@ html {
   display: flex;
   width: 100%;
   align-items: end;
+  position: relative;
 }
 
 .message-input {
@@ -82,6 +82,31 @@ html {
   padding: 10px;
   border: none;
   margin-right: 10px;
+  transition: height 0.3s ease;
+}
+
+.message-input.expanded {
+  height: 500px;
+}
+
+.expand-button {
+  background: #075e54;
+  border: none;
+  cursor: pointer;
+  position: absolute;
+  top: 5px;
+  right: 45px;
+  padding: 5px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.expand-button svg {
+  width: 24px;
+  height: 24px;
+  fill: white;
 }
 
 .send-btn {
@@ -153,7 +178,6 @@ html {
   height: 100vh;
   z-index: 100000;
 }
-
 
 .loader {
   border: 16px solid #f3f3f3;
