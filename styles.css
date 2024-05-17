@@ -1,0 +1,224 @@
+body,
+html {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background-color: #111b24;
+}
+
+.navBar {
+  min-height: 8vh;
+  background-color: #075e54;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  color: white;
+  gap: 2;
+}
+
+
+.container-main {
+  display: flex;
+  height: 92vh;
+  background-color: #111b24;
+}
+
+.sidebar {
+  color: white;
+  width: 20%;
+  background: #262d31;
+  border-right: 1px solid #075e54;
+}
+
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: flex-end;
+  padding: 20px;
+  width: 80%;
+}
+
+.chat-box {
+  flex-grow: 1;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+.user-message-container {
+  justify-content: end;
+  display: flex;
+  justify-content: end;
+}
+
+.message {
+  max-width: 60%;
+  margin: 5px;
+  padding: 10px;
+  border-radius: 5px;
+  color: white;
+  font-size: 0.9em;
+}
+
+.user-message {
+  background-color: #055160;
+}
+
+.assistant-message {
+  background-color: #262d31;
+}
+
+.message-input-container {
+  display: flex;
+  width: 100%;
+  align-items: end;
+}
+
+.message-input {
+  flex-grow: 1;
+  border-radius: 5px;
+  padding: 10px;
+  border: none;
+  margin-right: 10px;
+}
+
+.send-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  background-color: #075e54;
+  color: white;
+  cursor: pointer;
+  height: 50px;
+}
+
+.send-btn:hover {
+  background-color: #128c7e;
+}
+
+.new-chat-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  background-color: #111b24;
+  color: white;
+  cursor: pointer;
+}
+
+.new-chat-btn:hover {
+  background-color: #213647;
+}
+
+/* Add to your CSS file */
+.copy-btn-container {
+  display: flex;
+  justify-content: flex-start; /* Ensure buttons are aligned to the left */
+  gap: 10px; /* Add space between buttons */
+  margin-bottom: 10px; /* Add space below buttons */
+}
+
+.copy-btn,
+.save-btn,
+.edit-btn {
+  padding: 4px 8px;
+  background-color: transparent;
+  border: 1px solid white;
+  color: white;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+/* Style adjustments for the message container */
+.assistant-message-container {
+  display: flex;
+  flex-direction: column; /* Ensure content flows vertically */
+  align-items: flex-start; /* Align content to the left */
+}
+
+.message {
+  padding: 10px;
+  border-radius: 5px;
+  margin: 4px;
+  /* Additional styles as needed */
+}
+
+#loader {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  width: 100%;
+  height: 100vh;
+  z-index: 100000;
+}
+
+
+.loader {
+  border: 16px solid #f3f3f3;
+  border-radius: 50%;
+  border-top: 16px solid #075e54;
+  width: 90px;
+  height: 90px;
+  -webkit-animation: spin 2s linear infinite; /* Safari */
+  animation: spin 2s linear infinite;
+}
+
+/* Safari */
+@-webkit-keyframes spin {
+  0% {
+    -webkit-transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+#sidebar ul li {
+  list-style-type: none;
+  cursor: pointer;
+}
+
+#sidebar ul li::before {
+  color: #075e54; /* Color of the bullet */
+  font-size: 1.2em; /* Size of the bullet */
+  display: inline-block;
+  width: 1em;
+  margin-left: -1em;
+}
+
+.empty-dotted li::before {
+  content: "\2021"; /* Unicode character for a bullet */
+}
+
+.arrow li::before {
+  content: "\2023"; /* Unicode character for a bullet */
+}
+
+.dotted li::before {
+  content: "\2022"; /* Unicode character for a bullet */
+}
+
+.hidden {
+  display: none; /* Hide the element */
+}
+
+.edit-btn {
+  padding: 4px 8px;
+  margin-left: 10px;
+  background-color: transparent;
+  border: 1px solid white;
+  color: white;
+  cursor: pointer;
+  border-radius: 4px;
+}

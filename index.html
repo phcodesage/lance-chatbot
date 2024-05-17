@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assistant AI Bot</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="vendor/bootstrap.min.css">
+</head>
+
+<body>
+    <div id="loader">
+        <div class="loader"></div>
+    </div>
+    <div class="navBar">
+        <h3>Note Assistant AI</h3>
+        <div>
+            <button class="btn btn-dark" disabled>New Intake Note</button>
+            <button class="btn btn-dark" disabled>New Treatment Plan</button>
+            <button class="btn btn-dark" id="openSessionNoteModal">
+                New Session Note
+            </button>
+            <button id="newButton" class="btn btn-dark">New Chat</button>
+        </div>
+    </div>
+    <div class="container-main">
+        <div class="sidebar py-4">
+            <div class="d-flex justify-content-between align-items-center px-2 pb-1">
+                <h4>Clients</h4>
+                <button class="btn btn-outline-light" id="sidebarAddNewClientBtn">+ Add</button>
+            </div>
+            <div id="sidebarAddNewClientContainer" class="d-none p-2 d-flex justify-content-between gap-2">
+                <input type="text" class="form-control" id="sidebarNewClientName">
+                <button id="sidebarNewClientNameSaveBtn" class="btn btn-outline-light">Save</button>
+            </div>
+            <hr class="p-0 m-0">
+            <div id="sidebar"></div>
+        </div>
+        <div class="chat-container">
+            <div id="chat-box" class="chat-box"></div>
+            <div class="message-input-container">
+                <textarea id="message-input" placeholder="Type your message here..." class="message-input"
+                    rows="4"></textarea>
+                <button id="sendButton" class="btn-lg btn-success">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="SessionNoteModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content text-white bg-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="SessionNoteModalLabel">Session Note</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="SessionNoteModalBody">
+                    <form id="SessionNoteModalForm">
+                        <div class="mb-3 form-group ">
+                            <label class="form-label">Client:</label>
+                            <select name="clientId" class="form-control" id="SessionNoteModalClientNameSelect" required>
+                            </select>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label">Treatment plan</label>
+                            <select name="treatmentPlans" class="form-control" id="SessionNoteModalTreatmentPlanSelect"
+                                required>
+                                <option value="" disabled>No Option Available</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 form-group">
+                            <label class="form-label">Therapist notes/Comments:</label>
+                            <textarea name="comments" class="form-control" id="SessionNoteModalComments"
+                                rows="4"></textarea>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Inset in Chat</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="SaveModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content text-white bg-dark">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="SaveModalLabel">Save</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="SaveBody">
+                    <form id="SaveModalForm">
+                        <div class="mb-3 form-group ">
+                            <label for="SaveModalDatepicker" class="form-label">Date:</label>
+                            <input name="date" type="date" class="form-control" id="SaveModalDatepicker" required>
+                        </div>
+                        <div class="mb-3 form-group ">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <label class="form-label">Client:</label>
+                                <button type="button" class="btn text-white mb-2" id="SaveModalAddClientBtn">+
+                                    Add</button>
+                            </div>
+                            <select name="clientId" class="form-control" id="SaveModalClientNameSelect" required>
+                            </select>
+                            <input name="clientName" type="text" id="SaveModalClientNameInput" class="form-control"
+                                style="display: none;" placeholder="Enter client name">
+                        </div>
+                        <div class="mb-3 form-group ">
+                            <label for="SaveModalPlanName" class="form-label">Plan Name:</label>
+                            <input name="planName" type="text" class="form-control" id="SaveModalPlanName" required>
+                        </div>
+                        <div class="mb-3 form-group ">
+                            <label class="form-label">Plan Type:</label>
+                            <select name="planType" class="form-control" id="SaveModalPlanTypeSelect" required>
+                                <option value="" disabled selected>Select Plan Type</option>
+                                <option value="SessionNote">Session Note</option>
+                                <option value="TreatmentPlan">Treatment Plan</option>
+                                <option value="IntakeNote">Intake Note</option>
+                            </select>
+                        </div>
+                        <div class="mb-3 form-group" hidden>
+                            <input name="planId" type="text" class="form-control" id="SaveModalPlanId" required>
+                            <textarea name="document" class="form-control" id="SaveModalDocument" rows="4"
+                                required></textarea>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="DocumentModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content text-white bg-dark" style="width: 900px;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="DocumentModalLabel"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="DocumentModalBody">
+                    <div class="d-flex justify-content-end gap-2">
+                        <button id="DocumentModalCoptBtn" type="button" class="btn btn-secondary">Copy</button>
+                        <button id="DocumentModalInsertBtn" type="button" class="btn btn-primary">Insert in Chat</button>
+                        <button id="DocumentModalDeleteBtn" type="button" class="btn btn-danger">Delete</button>
+                    </div>
+                    <div id="DocumentModalDocumentDiv" class="mt-4 message assistant-message" style="max-width: 100%;">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+
+    <script src="node_modules/jquery/dist/jquery.min.js"></script>
+    <script src="vendor/bootstrap.bundle.min.js"></script>
+    <script src="node_modules/showdown/dist/showdown.min.js"></script>
+
+    <script src="./script.js"></script>
+</body>
+
+</html>

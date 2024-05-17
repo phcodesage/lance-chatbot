@@ -1,0 +1,18 @@
+# RUN_INSTRUCTIONS.txt
+
+## Prerequisites
+- Make sure you have Node.js and npm installed. You can download them from https://nodejs.org/.
+
+## Step-by-Step Guide
+
+1. **Navigate to the project directory**:
+   Open a terminal and navigate to the root directory of the project.
+
+2. **Install Dependencies**:
+   Run the following command to install the necessary dependencies for both frontend and backend:
+   ```bash
+   npm install
+
+3. Then run the app:
+    ```bash
+   node server.js
