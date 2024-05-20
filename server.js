@@ -33,18 +33,22 @@ app.post('/api', async (req, res) => {
   const { action, sheetName } = req.query;
   const data = req.body;
 
-  if (action === 'write') {
+  console.log('Received API request:', { action, sheetName, data }); // Debugging log
+
+  if (action === 'write' || action === 'update') {
     try {
-      const response = await axios.post(`${GOOGLE_SHEET_URL}?action=write&sheetName=${sheetName}`, data);
+      const response = await axios.post(`${GOOGLE_SHEET_URL}?action=${action}&sheetName=${sheetName}`, data);
       res.status(200).json(response.data);
     } catch (error) {
-      console.error('googleSheets Write Error:', error.response ? error.response.data : error.message);
+      console.error(`googleSheets ${action} Error:`, error.response ? error.response.data : error.message);
       res.status(500).json({ error: error.response ? error.response.data : error.message });
     }
   } else {
     res.status(400).json({ error: 'Invalid action' });
   }
 });
+
+
 
 // Endpoint to create a new thread
 app.post('/api/threads', async (req, res) => {
@@ -158,6 +162,7 @@ app.get('/api', async (req, res) => {
     res.status(500).json({ error: error.response ? error.response.data : error.message });
   }
 });
+
 
 app.delete('/api/clients/:clientId/notes/:noteId', async (req, res) => {
   const { clientId, noteId } = req.params;
