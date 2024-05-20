@@ -190,8 +190,6 @@ function saveEditedContent(editButton, divId) {
 
   // Get the updated content from the contenteditable div
   const updatedContent = messageContent.innerText.trim();
-  console.log('Updated content:', updatedContent);
-
   // Convert the updated content back to HTML
   const updatedHtmlContent = convertMarkdownToHtml(updatedContent);
 
@@ -227,18 +225,43 @@ function editMessage(button, content, divId) {
   inputArea.focus(); // Focuses the input field for immediate editing.
 }
 
-function createUserMessage(content) {
+function createUserMessage(content, divId) {
   const userMessageContainer = document.createElement("div");
   userMessageContainer.className = "user-message-container";
 
   const userMessage = document.createElement("div");
   userMessage.className = "message user-message";
-  userMessage.innerHTML = content;
 
+  const copyBtnContainer = document.createElement("div");
+  copyBtnContainer.className = "copy-btn-container";
+
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "copy-btn";
+  copyBtn.textContent = "Copy";
+  copyBtn.addEventListener("click", function () {
+    copyText(this, divId);
+  });
+
+  const editBtn = document.createElement("button");
+  editBtn.className = "edit-btn";
+  editBtn.textContent = "Edit";
+  editBtn.addEventListener("click", function () {
+    handleEditBtn(this, divId);
+  });
+
+  const messageContent = document.createElement("div");
+  messageContent.id = divId;
+  messageContent.innerHTML = content;
+
+  userMessage.appendChild(copyBtnContainer);
+  copyBtnContainer.appendChild(copyBtn);
+  copyBtnContainer.appendChild(editBtn);
+  userMessage.appendChild(messageContent);
   userMessageContainer.appendChild(userMessage);
 
   return userMessageContainer;
 }
+
 
 const setDisabled = (value) => {
   const input = document.getElementById("message-input");
@@ -260,7 +283,8 @@ async function sendMessage() {
   setDisabled(true);
 
   if (value !== "") {
-    const userMessage = createUserMessage(convertMarkdownToHtml(value));
+    const messageId = generateUniqueId(); // Generate a unique ID for the message
+    const userMessage = createUserMessage(convertMarkdownToHtml(value), messageId);
     document.getElementById("chat-box").appendChild(userMessage);
 
     let threadId = localStorage.getItem("threadId");
@@ -315,6 +339,7 @@ async function sendMessage() {
   setDisabled(false);
 }
 
+
 async function newChat() {
   handleLoader.show();
   const response = await createThread();
@@ -336,17 +361,18 @@ class ApiService {
     this.tableName = tableName;
   }
 
-  fetchData(url, options = {}) {
-    return fetch(url, options)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .catch((error) => {
-        throw error;
-      });
+  async fetchData(url, options = {}) {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorMessage}`);
+      }
+      return response.json();
+    } catch (error) {
+      console.error('Fetch Error:', error);
+      throw error;
+    }
   }
 
   buildUrl(params) {
@@ -354,7 +380,7 @@ class ApiService {
     return `${this.url}?${queryParams}`;
   }
 
-  get(id = null) {
+  async get(id = null) {
     const params = {
       action: id ? "getById" : "read",
       sheetName: this.tableName,
@@ -364,7 +390,7 @@ class ApiService {
     return this.fetchData(url);
   }
 
-  post(data) {
+  async post(data) {
     const params = {
       action: "write",
       sheetName: this.tableName,
@@ -379,7 +405,7 @@ class ApiService {
     });
   }
 
-  update(data) {
+  async update(data) {
     const params = {
       action: "update",
       sheetName: this.tableName,
@@ -399,6 +425,8 @@ const apiServices = {
   client: new ApiService("http://localhost:3001/api", "Client"),
 };
 
+
+
 // ########################## Handlers #########################
 
 function populateSelect(selectElement, optionsArray, placeholder = true) {
@@ -413,12 +441,13 @@ function populateSelect(selectElement, optionsArray, placeholder = true) {
       const noOption = new Option("Select One", "");
       selectElement.add(noOption);
     }
+    optionsArray.forEach((optionData) => {
+      const option = new Option(optionData.name, optionData.id);
+      selectElement.add(option);
+    });
   }
-  optionsArray.forEach((optionData) => {
-    const option = new Option(optionData.name, optionData.id);
-    selectElement.add(option);
-  });
 }
+
 
 const handleAddClientBtn = (btnId, firstElementId, secondElementId) => {
   const btn = document.getElementById(btnId);
@@ -509,22 +538,27 @@ const handleSessionNoteModal = () => {
     const clientinfo = extractClientInfo();
     const selectElement = document.getElementById("SessionNoteModalClientNameSelect");
     populateSelect(selectElement, clientinfo);
+
+    // Add an event listener to populate treatment plans when a client is selected
     selectElement.addEventListener("change", (event) => {
       const selectedValue = event.target.value;
       const client = getClientById(selectedValue);
       if (!client) {
-        alert("Client not found with id: " + clientId);
+        alert("Client not found with id: " + selectedValue);
         return;
       }
+      
       const treatmentPlans = JSON.parse(client["treatmentplan"] || "[]");
       treatmentPlans.sort((a, b) => new Date(b.date) - new Date(a.date));
       const formattedTreatmentPlans = treatmentPlans.map((plan) => ({
         id: plan.id,
-        name: plan?.name,
+        name: plan.name,
       }));
+
       const selectTreatmentPlan = document.getElementById("SessionNoteModalTreatmentPlanSelect");
       populateSelect(selectTreatmentPlan, formattedTreatmentPlans);
     });
+
     handleModal.open("SessionNoteModal");
   });
 
@@ -544,6 +578,7 @@ const handleSessionNoteModal = () => {
     document.getElementById("message-input").value = message;
   });
 };
+
 
 const updateSidebar = () => {
   const clientsData = getDataFromLocalStorage("clients") || [];
@@ -592,7 +627,7 @@ function sortByDate(a, b) {
   return dateB - dateA; // Sort from latest to oldest
 }
 
-function handleDocuemntModal() {
+function handleDocumentModal() {
   document.getElementById("DocumentModalInsertBtn").addEventListener("click", () => {
     const message = document.getElementById("DocumentModalDocumentDiv").textContent;
     handleModal.close("DocumentModal");
@@ -638,6 +673,55 @@ function handleDocuemntModal() {
       alert("Failed to delete note.");
     }
   });
+
+  document.getElementById("DocumentModalEditBtn").addEventListener("click", async function () {
+    const contentDiv = document.getElementById("DocumentModalDocumentDiv");
+    const editButton = this;
+
+    if (editButton.textContent === "Edit") {
+      contentDiv.contentEditable = "true";
+      contentDiv.style.border = "1px solid #ccc";
+      contentDiv.style.padding = "10px";
+      contentDiv.style.borderRadius = "5px";
+      contentDiv.focus();
+      editButton.textContent = "Save";
+    } else {
+      const noteId = contentDiv.getAttribute("data-note-id");
+      const clientId = localStorage.getItem("currentClientId");
+      const noteType = contentDiv.getAttribute("data-note-type");
+      const updatedContent = contentDiv.innerText.trim();
+
+      try {
+        const client = getClientById(clientId);
+        const notes = JSON.parse(client[noteType] || '[]');
+        const noteIndex = notes.findIndex(note => note.id === noteId);
+        if (noteIndex !== -1) {
+          notes[noteIndex].document = updatedContent;
+        }
+        client[noteType] = JSON.stringify(notes);
+
+        const response = await apiServices.client.update(client);
+        if (response.status === 200) {
+          updateClientLocalData(clientId, client);
+          alert("Note updated successfully.");
+
+          // Update the UI dynamically
+          updateSidebar();
+          updateDocumentModalContent(noteId, updatedContent);
+        } else {
+          alert(`Error: ${response.message}`);
+        }
+      } catch (error) {
+        console.error("Error updating note:", error);
+        alert("Failed to update note.");
+      }
+
+      contentDiv.contentEditable = "false";
+      contentDiv.style.border = "none";
+      contentDiv.style.padding = "0";
+      editButton.textContent = "Edit";
+    }
+  });
 }
 
 
@@ -649,7 +733,7 @@ function removeNoteFromSidebar(noteId) {
 }
 
 // Function to build a folder with sorted files
-function buildFolder(folderName, files, clientId) {  // Pass clientId as a parameter
+function buildFolder(folderName, files, clientId) {
   const folderLi = document.createElement("li");
   folderLi.classList.add("folder");
   folderLi.textContent = folderName;
@@ -662,7 +746,7 @@ function buildFolder(folderName, files, clientId) {  // Pass clientId as a param
   files.sort(sortByDate).forEach((file) => {
     const fileLi = document.createElement("li");
     fileLi.classList.add("file");
-    fileLi.textContent = `${file.name} (${file.date})`;
+    fileLi.textContent = `${file.name} (${file.date})`; // Ensure this displays the date and name correctly
     fileLi.setAttribute("data-note-id", file.id);
     fileLi.setAttribute("data-note-type", folderName.toLowerCase().replace(" ", ""));
     fileLi.addEventListener("click", (event) => {
@@ -674,6 +758,7 @@ function buildFolder(folderName, files, clientId) {  // Pass clientId as a param
       contentDiv.setAttribute("data-note-id", file.id);
       contentDiv.setAttribute("data-note-type", folderName.toLowerCase().replace(" ", ""));
       localStorage.setItem("currentClientId", clientId); // Set clientId in local storage
+
       const copyBtn = document.getElementById("DocumentModalCoptBtn");
       copyBtn.addEventListener("click", function () {
         copyText(this, "DocumentModalDocumentDiv");
@@ -685,6 +770,14 @@ function buildFolder(folderName, files, clientId) {  // Pass clientId as a param
 
   folderLi.appendChild(folderUl);
   return folderLi;
+}
+
+
+function updateDocumentModalContent(noteId, updatedContent) {
+  const noteElement = document.querySelector(`.file[data-note-id="${noteId}"]`);
+  if (noteElement) {
+      noteElement.textContent = updatedContent;
+  }
 }
 
 
@@ -750,14 +843,16 @@ const loadData = async () => {
     if (status === 200) {
       localStorage.setItem("clients", JSON.stringify(data));
     } else {
-      alert("Error on fetcing clients:", message);
+      alert(`Error fetching clients: ${message}`);
     }
   } catch (err) {
-    alert("Failed to Fetch clients:", err);
+    console.error('Error Fetching Clients:', err); // Log the error for debugging
+    alert(`Failed to Fetch clients: ${err.message}`);
   } finally {
     handleLoader.hide();
   }
 };
+
 
 const getDataFromLocalStorage = (key) => {
   const data = localStorage.getItem(key);
@@ -830,15 +925,21 @@ const updateClient = async (clientId, key, value) => {
     return;
   }
   const prevData = JSON.parse(client[key] || "[]");
-  const newData = [...prevData, value];
-  const updatedClient = { ...client, [key]: JSON.stringify(newData) };
+  const noteIndex = prevData.findIndex(note => note.id === value.id);
+
+  if (noteIndex !== -1) {
+    prevData[noteIndex] = value;
+  } else {
+    prevData.push(value);
+  }
+
+  const updatedClient = { ...client, [key]: JSON.stringify(prevData) };
 
   try {
     const response = await apiServices.client.update(updatedClient);
     if (response.status === 200) {
-      console.log(response.message);
       updateClientLocalData(clientId, updatedClient);
-      handleHideSaveButton(value.id);
+      alert("Client updated successfully.");
       updateSidebar();
     } else {
       alert(`Error: ${response.message}`);
@@ -847,6 +948,8 @@ const updateClient = async (clientId, key, value) => {
     alert(`Failed to update client: ${err}`);
   }
 };
+
+
 
 const addClientName = async (clientName) => {
   const cleanData = {
@@ -952,7 +1055,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   document.getElementById("sendButton").addEventListener("click", sendMessage);
   handleSessionNoteModal();
   handleSaveModal();
-  handleDocuemntModal();
+  handleDocumentModal();
   updateSidebar();
   handelAddNewClient();
   handleExpandButton();
