@@ -140,10 +140,13 @@ function createAssistantMessage(content, divId) {
 
   const saveBtn = document.createElement("button");
   saveBtn.className = "save-btn";
-  saveBtn.textContent = "Save";
+  saveBtn.textContent = "Save to Note";
   saveBtn.addEventListener("click", function () {
     handleSaveBtn(this, content, divId);
   });
+  
+  
+  
 
   const editBtn = document.createElement("button");
   editBtn.className = "edit-btn";
@@ -154,7 +157,7 @@ function createAssistantMessage(content, divId) {
 
   const messageContent = document.createElement("div");
   messageContent.id = divId;
-  messageContent.innerHTML = convertMarkdownToHtml(content);
+  messageContent.innerHTML = convertMarkdownToHtml(content); // Ensuring the content is properly converted from Markdown to HTML
 
   messageDiv.appendChild(copyBtnContainer);
   copyBtnContainer.appendChild(copyBtn);
@@ -165,6 +168,7 @@ function createAssistantMessage(content, divId) {
 
   return messageContainer;
 }
+
 
 function handleEditBtn(editButton, divId) {
   const messageContent = document.getElementById(divId);
@@ -184,17 +188,71 @@ function handleEditBtn(editButton, divId) {
   };
 }
 
-function saveEditedContent(editButton, divId) {
+async function saveEditedContent(editButton, divId) {
   const messageContent = document.getElementById(divId);
   if (!messageContent) return;
 
-  // Get the updated content from the contenteditable div
-  const updatedContent = messageContent.innerText.trim();
-  // Convert the updated content back to HTML
-  const updatedHtmlContent = convertMarkdownToHtml(updatedContent);
+  // Get the updated HTML content from the contenteditable div
+  const updatedHtmlContent = messageContent.innerHTML.trim();
+
+  // Get today's date
+  const today = new Date().toISOString().split('T')[0];
+
+  // Extract the first line of the updated content
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(updatedHtmlContent, 'text/html');
+  const firstLine = doc.body.firstChild ? doc.body.firstChild.innerText.trim() : "";
+
+  // Find the original title element and retain the original date
+  const noteElement = document.querySelector(`.file[data-note-id="${divId}"]`);
+  if (noteElement) {
+    const originalText = noteElement.getAttribute('data-original-text');
+    const originalDateMatch = originalText.match(/\((\d{4}-\d{2}-\d{2})\)/);
+    const originalDate = originalDateMatch ? originalDateMatch[1] : today;
+    const updatedTitle = `${firstLine} (${originalDate}) <span style="color: gray; font-weight: 200">(Edited ${today})</span>`;
+    noteElement.setAttribute('data-original-text', `${firstLine} (${originalDate})`); // Store the raw title
+    noteElement.innerHTML = `<span style="color: rgb(0, 191, 255);">• </span>${updatedTitle}`;
+
+    // Update the note content in local storage and API
+    const clientId = localStorage.getItem("currentClientId");
+    const client = getClientById(clientId);
+    const noteType = noteElement.getAttribute('data-note-type');
+    const notes = JSON.parse(client[noteType] || '[]');
+    const noteIndex = notes.findIndex(note => note.id === divId);
+    if (noteIndex !== -1) {
+      notes[noteIndex].document = updatedHtmlContent;
+    }
+    client[noteType] = JSON.stringify(notes);
+    updateClientLocalData(clientId, client);
+
+    // Update note in API
+    const response = await apiServices.client.update(client);
+    if (response.status !== 200) {
+      console.error('Failed to update note in API');
+      return;
+    }
+
+    // Refresh the sidebar and open the relevant folder
+    const sidebarElement = document.getElementById("sidebar");
+    sidebarElement.innerHTML = "";
+    createDirectoryStructure(sidebarElement, getDataFromLocalStorage("clients"));
+    const parentFolder = noteElement.closest('.folder');
+    if (parentFolder) {
+      const nestedList = parentFolder.querySelector("ul");
+      if (nestedList) {
+        nestedList.classList.remove("hidden");
+      }
+    }
+  }
 
   // Set the innerHTML with the updated HTML content
   messageContent.innerHTML = updatedHtmlContent;
+
+  // Remove any H3 tags from the displayed content
+  const h3Tags = messageContent.getElementsByTagName('h3');
+  while (h3Tags[0]) {
+    h3Tags[0].parentNode.removeChild(h3Tags[0]);
+  }
 
   // Reset contenteditable to false
   messageContent.contentEditable = "false";
@@ -206,6 +264,12 @@ function saveEditedContent(editButton, divId) {
   editButton.onclick = function () {
     handleEditBtn(editButton, divId);
   };
+
+  // Show Bootstrap alert
+  showNotification("Note saved successfully!");
+
+  // Close the modal
+  handleModal.close("DocumentModal");
 }
 
 function convertMarkdownToHtml(markdown) {
@@ -251,7 +315,7 @@ function createUserMessage(content, divId) {
 
   const messageContent = document.createElement("div");
   messageContent.id = divId;
-  messageContent.innerHTML = content;
+  messageContent.innerHTML = convertMarkdownToHtml(content); // Ensure content is properly formatted
 
   userMessage.appendChild(copyBtnContainer);
   copyBtnContainer.appendChild(copyBtn);
@@ -261,7 +325,6 @@ function createUserMessage(content, divId) {
 
   return userMessageContainer;
 }
-
 
 const setDisabled = (value) => {
   const input = document.getElementById("message-input");
@@ -291,7 +354,7 @@ async function sendMessage() {
     if (!threadId || threadId === "undefined") {
       const { id, status } = await createThread();
       if (status === 404) {
-        alert("Something went wrong during creating the thread");
+        showNotification("Something went wrong during creating the thread");
         setDisabled(false);
         return;
       }
@@ -320,18 +383,18 @@ async function sendMessage() {
               break;
             }
           } else {
-            alert("Something went wrong during getting response from API");
+            showNotification("Something went wrong during getting response from API");
             setDisabled(false);
             return;
           }
         }
       } else {
-        alert("Something went wrong during running the thread");
+        showNotification("Something went wrong during running the thread");
         setDisabled(false);
         return;
       }
     } else {
-      alert("Something went wrong during posting message.");
+      showNotification("Something went wrong during posting message.");
       setDisabled(false);
       return;
     }
@@ -339,14 +402,13 @@ async function sendMessage() {
   setDisabled(false);
 }
 
-
 async function newChat() {
   handleLoader.show();
   const response = await createThread();
   if (response.status === 200) {
     localStorage.setItem("threadId", response.id);
   } else {
-    alert("Something went Wrong During New Thread. May Be Your API KEY OR Assistant ID Is Invalid.");
+    showNotification("Something went Wrong During New Thread. May Be Your API KEY OR Assistant ID Is Invalid.");
   }
   const chatBox = document.getElementById("chat-box");
   chatBox.innerHTML = "";
@@ -425,8 +487,6 @@ const apiServices = {
   client: new ApiService("http://localhost:3001/api", "Client"),
 };
 
-
-
 // ########################## Handlers #########################
 
 function populateSelect(selectElement, optionsArray, placeholder = true) {
@@ -498,13 +558,49 @@ const handleLoader = {
 };
 
 const handleSaveBtn = (button, content, divId) => {
-  document.getElementById("SaveModalPlanId").value = divId;
-  document.getElementById("SaveModalDocument").value = content;
-  const clientinfo = extractClientInfo();
-  const selectElement = document.getElementById("SaveModalClientNameSelect");
-  populateSelect(selectElement, clientinfo);
-  handleModal.open("SaveModal");
+  const planIdElement = document.getElementById("SaveModalPlanId");
+  const documentElement = document.getElementById("SaveModalDocument");
+  const clientNameSelect = document.getElementById("SaveModalClientNameSelect");
+  const dateElement = document.getElementById("SaveModalDatepicker");
+
+  if (planIdElement && documentElement && clientNameSelect && dateElement) {
+    planIdElement.value = divId;
+    documentElement.value = content;
+
+    const clientInfo = extractClientInfo();
+    populateSelect(clientNameSelect, clientInfo);
+
+    // Automatically select the client based on the selected treatment plan or selected client
+    const selectedClientId = localStorage.getItem("selectedClientId") || getSelectedClientIdFromPlan(divId);
+    if (selectedClientId) {
+      clientNameSelect.value = selectedClientId;
+      clientNameSelect.dispatchEvent(new Event('change'));
+      // Do not remove selectedClientId from localStorage
+    }
+
+    // Set today's date in the date input field
+    const today = new Date().toISOString().split('T')[0];
+    dateElement.value = today;
+
+    handleModal.open("SaveModal");
+  } else {
+    console.error("One or more elements not found in handleSaveBtn function.");
+  }
 };
+
+// Helper function to get the selected client ID from the plan
+const getSelectedClientIdFromPlan = (planId) => {
+  const clients = getDataFromLocalStorage("clients") || [];
+  for (const client of clients) {
+    const treatmentPlans = JSON.parse(client.treatmentplan || '[]');
+    if (treatmentPlans.some(plan => plan.id === planId)) {
+      return client.id;
+    }
+  }
+  return null;
+};
+
+
 
 const handleSaveModal = () => {
   document.getElementById("SaveModalAddClientBtn").addEventListener("click", () =>
@@ -523,7 +619,7 @@ const handleSaveModal = () => {
       clientId: formData.get("clientId"),
       planId: formData.get("planId"),
       planName: formData.get("planName"),
-      planType: formData.get("planType"),
+      planType: "treatmentplan", // or other types based on your application
       date: formData.get("date"),
       document: formData.get("document"),
     };
@@ -533,21 +629,31 @@ const handleSaveModal = () => {
   });
 };
 
+
 const handleSessionNoteModal = () => {
   document.getElementById("openSessionNoteModal").addEventListener("click", () => {
     const clientinfo = extractClientInfo();
     const selectElement = document.getElementById("SessionNoteModalClientNameSelect");
     populateSelect(selectElement, clientinfo);
 
+    // Get selectedClientId from localStorage
+    const selectedClientId = localStorage.getItem("selectedClientId");
+
+    // Automatically select the client if `selectedClientId` is provided
+    if (selectedClientId) {
+      selectElement.value = selectedClientId;
+      selectElement.dispatchEvent(new Event('change'));
+    }
+
     // Add an event listener to populate treatment plans when a client is selected
     selectElement.addEventListener("change", (event) => {
       const selectedValue = event.target.value;
       const client = getClientById(selectedValue);
       if (!client) {
-        alert("Client not found with id: " + selectedValue);
+        showNotification("Client not found with id: " + selectedValue);
         return;
       }
-      
+
       const treatmentPlans = JSON.parse(client["treatmentplan"] || "[]");
       treatmentPlans.sort((a, b) => new Date(b.date) - new Date(a.date));
       const formattedTreatmentPlans = treatmentPlans.map((plan) => ({
@@ -556,7 +662,18 @@ const handleSessionNoteModal = () => {
       }));
 
       const selectTreatmentPlan = document.getElementById("SessionNoteModalTreatmentPlanSelect");
+      selectTreatmentPlan.innerHTML = ""; // Clear previous options
       populateSelect(selectTreatmentPlan, formattedTreatmentPlans);
+
+      // Set the most recent treatment plan as default if available, else show "No treatment plan"
+      if (formattedTreatmentPlans.length > 0) {
+        selectTreatmentPlan.value = formattedTreatmentPlans[0].id;
+      } else {
+        const noOption = new Option("No treatment plan", "");
+        noOption.disabled = true;
+        selectTreatmentPlan.add(noOption);
+        selectTreatmentPlan.value = "";
+      }
     });
 
     handleModal.open("SessionNoteModal");
@@ -566,18 +683,28 @@ const handleSessionNoteModal = () => {
   form.addEventListener("submit", async function (event) {
     event.preventDefault();
     const formData = new FormData(form);
+    const modalities = [];
+    formData.getAll("modalities").forEach(value => {
+      if (value) modalities.push(value);
+    });
+
     const data = {
       clientId: formData.get("clientId"),
       treatmentPlans: formData.get("treatmentPlans"),
       comments: formData.get("comments"),
+      telehealth: formData.get("telehealth") === 'on', // Capture telehealth checkbox
+      modalities: modalities,
     };
 
     const message = createNewSessionNote(data);
     handleModal.close("SessionNoteModal");
     form.reset();
-    document.getElementById("message-input").value = message;
+    document.getElementById("message-input").value = message; // Use value instead of innerHTML
   });
 };
+
+
+
 
 
 const updateSidebar = () => {
@@ -586,6 +713,7 @@ const updateSidebar = () => {
   sidebarElement.innerHTML = "";
   createDirectoryStructure(sidebarElement, clientsData);
 };
+
 
 const handleHideSaveButton = (divId) => {
   const targetDiv = document.getElementById(divId);
@@ -621,6 +749,7 @@ const handelAddNewClient = () => {
 };
 
 // ########################## Sidebar #########################
+
 function sortByDate(a, b) {
   const dateA = new Date(a.date);
   const dateB = new Date(b.date);
@@ -629,7 +758,7 @@ function sortByDate(a, b) {
 
 function handleDocumentModal() {
   document.getElementById("DocumentModalInsertBtn").addEventListener("click", () => {
-    const message = document.getElementById("DocumentModalDocumentDiv").textContent;
+    const message = document.getElementById("DocumentModalDocumentDiv").innerText; // Use innerText to avoid HTML tags
     handleModal.close("DocumentModal");
 
     const input = document.getElementById("message-input");
@@ -643,35 +772,6 @@ function handleDocumentModal() {
     // Move the cursor to the end of the inserted text
     input.selectionStart = input.selectionEnd = cursorPos + message.length;
     input.focus();
-  });
-
-  document.getElementById("DocumentModalDeleteBtn").addEventListener("click", async () => {
-    const noteId = document.getElementById("DocumentModalDocumentDiv").getAttribute("data-note-id");
-    const clientId = localStorage.getItem("currentClientId");
-    const noteType = document.getElementById("DocumentModalDocumentDiv").getAttribute("data-note-type");
-
-    if (!noteId || !clientId || !noteType) {
-      alert("Error: Note ID, Client ID, or Note Type is missing.");
-      return;
-    }
-
-    try {
-      const response = await fetch(`${BASE_URL}/clients/${clientId}/notes/${noteId}?noteType=${noteType}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        alert("Note deleted successfully.");
-        handleModal.close("DocumentModal");
-        removeNoteFromSidebar(noteId); // Call the function to remove the note from the sidebar
-        updateSidebar();
-      } else {
-        alert("Failed to delete note.");
-      }
-    } catch (error) {
-      console.error("Error deleting note:", error);
-      alert("Failed to delete note.");
-    }
   });
 
   document.getElementById("DocumentModalEditBtn").addEventListener("click", async function () {
@@ -689,40 +789,55 @@ function handleDocumentModal() {
       const noteId = contentDiv.getAttribute("data-note-id");
       const clientId = localStorage.getItem("currentClientId");
       const noteType = contentDiv.getAttribute("data-note-type");
-      const updatedContent = contentDiv.innerText.trim();
+      const updatedHtmlContent = contentDiv.innerHTML.trim(); // Get the updated HTML content
 
       try {
         const client = getClientById(clientId);
         const notes = JSON.parse(client[noteType] || '[]');
         const noteIndex = notes.findIndex(note => note.id === noteId);
         if (noteIndex !== -1) {
-          notes[noteIndex].document = updatedContent;
+          notes[noteIndex].document = updatedHtmlContent;
         }
         client[noteType] = JSON.stringify(notes);
 
         const response = await apiServices.client.update(client);
         if (response.status === 200) {
           updateClientLocalData(clientId, client);
-          alert("Note updated successfully.");
+          showNotification("Note updated successfully.");
+
+          // Directly refresh the relevant part of the sidebar
+          const sidebarElement = document.getElementById("sidebar");
+          sidebarElement.innerHTML = "";
+          createDirectoryStructure(sidebarElement, getDataFromLocalStorage("clients"));
 
           // Update the UI dynamically
-          updateSidebar();
-          updateDocumentModalContent(noteId, updatedContent);
+          updateDocumentModalContent(noteId, updatedHtmlContent);
         } else {
-          alert(`Error: ${response.message}`);
+          showNotification(`Error: ${response.message}`);
         }
       } catch (error) {
         console.error("Error updating note:", error);
-        alert("Failed to update note.");
+        showNotification("Failed to update note.");
+      }
+
+      // Remove any H3 tags from the displayed content
+      const h3Tags = contentDiv.getElementsByTagName('h3');
+      while (h3Tags[0]) {
+        h3Tags[0].parentNode.removeChild(h3Tags[0]);
       }
 
       contentDiv.contentEditable = "false";
       contentDiv.style.border = "none";
       contentDiv.style.padding = "0";
       editButton.textContent = "Edit";
+
+      // Close the modal
+      handleModal.close("DocumentModal");
     }
   });
 }
+
+
 
 
 function removeNoteFromSidebar(noteId) {
@@ -731,6 +846,7 @@ function removeNoteFromSidebar(noteId) {
     noteElement.parentElement.removeChild(noteElement);
   }
 }
+
 
 // Function to build a folder with sorted files
 function buildFolder(folderName, files, clientId) {
@@ -746,12 +862,23 @@ function buildFolder(folderName, files, clientId) {
   files.sort(sortByDate).forEach((file) => {
     const fileLi = document.createElement("li");
     fileLi.classList.add("file");
-    fileLi.textContent = `${file.name} (${file.date})`; // Ensure this displays the date and name correctly
+
+    // Use the raw title stored in `data-original-text`
+    const originalText = file.name || file.document.split('\n')[0].replace(/<\/?[^>]+(>|$)/g, ""); // Strip HTML tags
+    const fileText = `${originalText} (${file.date})`;
+    const bulletPoint = document.createElement("span");
+    bulletPoint.textContent = "• ";
+    bulletPoint.style.color = "#00BFFF"; // Customize bullet point color if needed
+
+    fileLi.appendChild(bulletPoint);
+    fileLi.appendChild(document.createTextNode(fileText));
+
     fileLi.setAttribute("data-note-id", file.id);
     fileLi.setAttribute("data-note-type", folderName.toLowerCase().replace(" ", ""));
+    fileLi.setAttribute("data-original-text", fileText); // Store the raw title
     fileLi.addEventListener("click", (event) => {
       event.stopPropagation(); // Prevent parent folders from toggling
-      document.getElementById("DocumentModalLabel").textContent = file.name.toUpperCase();
+      document.getElementById("DocumentModalLabel").textContent = originalText.toUpperCase();
       const contentDiv = document.getElementById("DocumentModalDocumentDiv");
       contentDiv.innerHTML = "";
       contentDiv.innerHTML = convertMarkdownToHtml(file.document);
@@ -773,16 +900,8 @@ function buildFolder(folderName, files, clientId) {
 }
 
 
-function updateDocumentModalContent(noteId, updatedContent) {
-  const noteElement = document.querySelector(`.file[data-note-id="${noteId}"]`);
-  if (noteElement) {
-      noteElement.textContent = updatedContent;
-  }
-}
-
-
 // Function to create the directory structure for multiple clients
-function createDirectoryStructure(rootElement, clientsData) {
+const createDirectoryStructure = (rootElement, clientsData) => {
   const root = document.createElement("ul");
   root.classList.add("empty-dotted");
 
@@ -797,17 +916,23 @@ function createDirectoryStructure(rootElement, clientsData) {
 
     // Create subfolders for treatment plans, intake notes, and session notes
     clientUl.appendChild(
-      buildFolder("Treatment Plan", JSON.parse(client["treatmentplan"] || "[]"), client.id)  // Pass client.id to buildFolder
+      buildFolder("Treatment Plan", JSON.parse(client["treatmentplan"] || "[]"), client.id)
     );
     clientUl.appendChild(
-      buildFolder("Intake Note", JSON.parse(client["intakenote"] || "[]"), client.id)  // Pass client.id to buildFolder
+      buildFolder("Intake Note", JSON.parse(client["intakenote"] || "[]"), client.id)
     );
     clientUl.appendChild(
-      buildFolder("Session Note", JSON.parse(client["sessionnote"] || "[]"), client.id)  // Pass client.id to buildFolder
+      buildFolder("Session Note", JSON.parse(client["sessionnote"] || "[]"), client.id)
     );
 
     clientLi.appendChild(clientUl);
     root.appendChild(clientLi);
+
+    // Add click event listener to clientLi to store selected clientId
+    clientLi.addEventListener("click", (event) => {
+      event.stopPropagation(); // Prevent parent folders from toggling
+      localStorage.setItem("selectedClientId", client.id); // Store selected client ID in localStorage
+    });
   });
 
   rootElement.appendChild(root);
@@ -823,7 +948,57 @@ function createDirectoryStructure(rootElement, clientsData) {
       }
     });
   });
+};
+
+
+
+function updateDocumentModalContent(noteId, updatedContent) {
+  const noteElement = document.querySelector(`.file[data-note-id="${noteId}"]`);
+  if (noteElement) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(updatedContent, 'text/html');
+    const firstLine = doc.body.firstChild ? doc.body.firstChild.innerText.trim() : "";
+    const today = new Date().toISOString().split('T')[0];
+    const originalText = noteElement.getAttribute('data-original-text');
+    const originalDateMatch = originalText.match(/\((\d{4}-\d{2}-\d{2})\)/);
+    const originalDate = originalDateMatch ? originalDateMatch[1] : today;
+    const updatedTitle = `${firstLine} (${originalDate}) <span style="color: gray; font-weight: 200">(Edited ${today})</span>`;
+    noteElement.setAttribute('data-original-text', `${firstLine} (${originalDate})`); // Store the raw title
+    noteElement.innerHTML = `<span style="color: rgb(0, 191, 255);">• </span>${updatedTitle}`;
+  }
 }
+
+
+document.getElementById("DocumentModalDeleteBtn").addEventListener("click", async () => {
+  const noteId = document.getElementById("DocumentModalDocumentDiv").getAttribute("data-note-id");
+  const clientId = localStorage.getItem("currentClientId");
+  const noteType = document.getElementById("DocumentModalDocumentDiv").getAttribute("data-note-type");
+
+  if (!noteId || !clientId || !noteType) {
+    showNotification("Error: Note ID, Client ID, or Note Type is missing.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}/clients/${clientId}/notes/${noteId}?noteType=${noteType}`, {
+      method: "DELETE",
+    });
+
+    if (response.ok) {
+      showNotification("Note deleted successfully.");
+      handleModal.close("DocumentModal");
+      removeNoteFromSidebar(noteId); // Call the function to remove the note from the sidebar
+      updateSidebar();
+    } else {
+      showNotification("Failed to delete note.");
+    }
+  } catch (error) {
+    console.error("Error deleting note:", error);
+    showNotification("Failed to delete note.");
+  }
+});
+
+
 // ########################## Utils #########################
 
 function generateUniqueId() {
@@ -843,16 +1018,15 @@ const loadData = async () => {
     if (status === 200) {
       localStorage.setItem("clients", JSON.stringify(data));
     } else {
-      alert(`Error fetching clients: ${message}`);
+      showNotification(`Error fetching clients: ${message}`);
     }
   } catch (err) {
     console.error('Error Fetching Clients:', err); // Log the error for debugging
-    alert(`Failed to Fetch clients: ${err.message}`);
+    showNotification(`Failed to Fetch clients: ${err.message}`);
   } finally {
     handleLoader.hide();
   }
 };
-
 
 const getDataFromLocalStorage = (key) => {
   const data = localStorage.getItem(key);
@@ -884,8 +1058,7 @@ const getClientById = (clientId) => {
 };
 
 const saveClient = async (data) => {
-  const { planType, clientName, clientId, planName, planId, date, document } =
-    data;
+  const { planType, clientName, clientId, planName, planId, date, document } = data;
   const key = planType.toLowerCase();
   const value = { id: planId, name: planName, document, date };
   handleLoader.show();
@@ -911,17 +1084,17 @@ const addClient = async (clientName, key, value) => {
       handleHideSaveButton(value.id);
       updateSidebar();
     } else {
-      alert(`Error: ${response.message}`);
+      showNotification(`Error: ${response.message}`);
     }
   } catch (err) {
-    alert(`Failed to save client: ${err}`);
+    showNotification(`Failed to save client: ${err}`);
   }
 };
 
 const updateClient = async (clientId, key, value) => {
   const client = getClientById(clientId);
   if (!client) {
-    alert("Client not found with id: " + clientId);
+    showNotification("Client not found with id: " + clientId);
     return;
   }
   const prevData = JSON.parse(client[key] || "[]");
@@ -939,18 +1112,16 @@ const updateClient = async (clientId, key, value) => {
     const response = await apiServices.client.update(updatedClient);
     if (response.status === 200) {
       updateClientLocalData(clientId, updatedClient);
-      alert("Client updated successfully.");
+      showNotification("Client updated successfully.");
       updateSidebar();
     } else {
-      alert(`Error: ${response.message}`);
+      showNotification(`Error: ${response.message}`);
     }
   } catch (err) {
-    alert(`Failed to update client: ${err}`);
+    showNotification(`Failed to update client: ${err}`);
   }
-};
 
-
-
+}
 const addClientName = async (clientName) => {
   const cleanData = {
     id: generateUniqueId(),
@@ -964,10 +1135,10 @@ const addClientName = async (clientName) => {
       addClientLocalData(cleanData);
       updateSidebar();
     } else {
-      alert(`Error: ${response.message}`);
+      showNotification(`Error: ${response.message}`);
     }
   } catch (err) {
-    alert(`Failed to save client: ${err}`);
+    showNotification(`Failed to save client: ${err}`);
   }
   handleLoader.hide();
 };
@@ -980,32 +1151,57 @@ const extractClientInfo = () => {
   }));
 };
 
-const createNewSessionNote = (data) => {
-  const { clientId, comments, treatmentPlans } = data;
+function createNewSessionNote(data) {
+  const { clientId, comments, treatmentPlans, telehealth, modalities } = data;
   const client = getClientById(clientId);
   if (!client) {
-    alert("Client not found with id: " + clientId);
+    showNotification("Client not found with id: " + clientId);
     return;
   }
   const allTreatmentPlans = JSON.parse(client["treatmentplan"] || "[]");
   const selectedTreatmentPlans = allTreatmentPlans.find(
     (plan) => plan.id === treatmentPlans
   );
-  if (!client) {
-    alert("Treatment Plan not found with id: " + treatmentPlans);
+  if (!selectedTreatmentPlans) {
+    showNotification("Treatment Plan not found with id: " + treatmentPlans);
     return;
   }
-  const message = `Create new session note
+  const messagePrefix = telehealth ? 'Create new session note, telehealth' : 'Create new session note';
+  const treatmentPlanText = selectedTreatmentPlans.document.replace(/<\/?[^>]+(>|$)/g, ""); // Strip HTML tags
+  const treatmentPlanName = selectedTreatmentPlans.name; // Get the correct treatment plan name
+  const modalitiesText = modalities.length ? `${modalities.join(', ')}` : '';
 
-Here is the client current treatment plan:
-${selectedTreatmentPlans.document}
+  const message = `${messagePrefix}
 
-Session details:
-${comments}
+Here is the client current treatment plan (${treatmentPlanName}):
+${treatmentPlanText}
+
+Session details: ${comments}.
+${modalitiesText}
 `;
 
   return message;
-};
+}
+
+
+function showNotification(message, type = 'primary') {
+  const notificationContainer = document.getElementById('notification-container');
+  
+  const notification = document.createElement('div');
+  notification.className = `notification alert alert-${type} show`;
+  notification.innerHTML = `
+    <span>${message}</span>
+    <button class="close-btn" onclick="this.parentElement.remove()">×</button>
+  `;
+
+  notificationContainer.appendChild(notification);
+
+  setTimeout(() => {
+    notification.remove();
+  }, 3000);
+}
+
+
 
 function handleExpandButton() {
   const expandButton = document.getElementById("expandButton");
@@ -1013,37 +1209,37 @@ function handleExpandButton() {
   const expandIcon = document.getElementById("expandIcon");
 
   expandButton.addEventListener("click", () => {
-      messageInput.classList.toggle("expanded");
+    messageInput.classList.toggle("expanded");
 
-      if (messageInput.classList.contains("expanded")) {
-          expandIcon.innerHTML = `
-          <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-          <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.16"></g>
-          <g id="SVGRepo_iconCarrier">
-              <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-                  <g id="Dribbble-Light-Preview" transform="translate(-220.000000, -6684.000000)" fill="#ffff">
-                      <g id="icons" transform="translate(56.000000, 160.000000)">
-                          <path d="M164.292308,6524.36583 L164.292308,6524.36583 C163.902564,6524.77071 163.902564,6525.42619 164.292308,6525.83004 L172.555873,6534.39267 C173.33636,6535.20244 174.602528,6535.20244 175.383014,6534.39267 L183.70754,6525.76791 C184.093286,6525.36716 184.098283,6524.71997 183.717533,6524.31405 C183.328789,6523.89985 182.68821,6523.89467 182.29347,6524.30266 L174.676479,6532.19636 C174.285736,6532.60124 173.653152,6532.60124 173.262409,6532.19636 L165.705379,6524.36583 C165.315635,6523.96094 164.683051,6523.96094 164.292308,6524.36583" id="arrow_down-[#338]"></path>
-                      </g>
-                  </g>
+    if (messageInput.classList.contains("expanded")) {
+      expandIcon.innerHTML = `
+        <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+        <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#CCCCCC" stroke-width="0.16"></g>
+        <g id="SVGRepo_iconCarrier">
+          <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <g id="Dribbble-Light-Preview" transform="translate(-220.000000, -6684.000000)" fill="#ffff">
+              <g id="icons" transform="translate(56.000000, 160.000000)">
+                <path d="M164.292308,6524.36583 L164.292308,6524.36583 C163.902564,6524.77071 163.902564,6525.42619 164.292308,6525.83004 L172.555873,6534.39267 C173.33636,6535.20244 174.602528,6535.20244 175.383014,6534.39267 L183.70754,6525.76791 C184.093286,6525.36716 184.098283,6524.71997 183.717533,6524.31405 C183.328789,6523.89985 182.68821,6523.89467 182.29347,6524.30266 L174.676479,6532.19636 C174.285736,6532.60124 173.653152,6532.60124 173.262409,6532.19636 L165.705379,6524.36583 C165.315635,6523.96094 164.683051,6523.96094 164.292308,6524.36583" id="arrow_down-[#338]"></path>
               </g>
+            </g>
           </g>
-          `;
-      } else {
-          expandIcon.innerHTML = `
-          <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-                  <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
-                  <g id="SVGRepo_iconCarrier">
-                      <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
-                          <g id="Dribbble-Light-Preview" transform="translate(-140.000000, -6683.000000)" fill="#ffffff">
-                              <g id="icons" transform="translate(56.000000, 160.000000)">
-                                  <path d="M84,6532.61035 L85.4053672,6534 L94.0131154,6525.73862 L94.9311945,6526.61986 L94.9261501,6526.61502 L102.573446,6533.95545 L104,6532.58614 C101.8864,6530.55736 95.9854722,6524.89321 94.0131154,6523 C92.5472155,6524.40611 93.9757869,6523.03486 84,6532.61035" id="arrow_up[#340]"></path>
-                              </g>
-                          </g>
-                      </g>
-                  </g>
-          `;
-      }
+        </g>
+      `;
+    } else {
+      expandIcon.innerHTML = `
+        <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+        <g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g>
+        <g id="SVGRepo_iconCarrier">
+          <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <g id="Dribbble-Light-Preview" transform="translate(-140.000000, -6683.000000)" fill="#ffffff">
+              <g id="icons" transform="translate(56.000000, 160.000000)">
+                <path d="M84,6532.61035 L85.4053672,6534 L94.0131154,6525.73862 L94.9311945,6526.61986 L94.9261501,6526.61502 L102.573446,6533.95545 L104,6532.58614 C101.8864,6530.55736 95.9854722,6524.89321 94.0131154,6523 C92.5472155,6524.40611 93.9757869,6523.03486 84,6532.61035" id="arrow_up[#340]"></path>
+              </g>
+            </g>
+          </g>
+        </g>
+      `;
+    }
   });
 }
 
@@ -1060,3 +1256,4 @@ document.addEventListener("DOMContentLoaded", async function () {
   handelAddNewClient();
   handleExpandButton();
 });
+

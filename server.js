@@ -33,8 +33,6 @@ app.post('/api', async (req, res) => {
   const { action, sheetName } = req.query;
   const data = req.body;
 
-  console.log('Received API request:', { action, sheetName, data }); // Debugging log
-
   if (action === 'write' || action === 'update') {
     try {
       const response = await axios.post(`${GOOGLE_SHEET_URL}?action=${action}&sheetName=${sheetName}`, data);
@@ -43,10 +41,19 @@ app.post('/api', async (req, res) => {
       console.error(`googleSheets ${action} Error:`, error.response ? error.response.data : error.message);
       res.status(500).json({ error: error.response ? error.response.data : error.message });
     }
+  } else if (action === 'getById') {
+    try {
+      const response = await axios.get(`${GOOGLE_SHEET_URL}?action=getById&sheetName=${sheetName}&id=${data.id}`);
+      res.status(200).json(response.data);
+    } catch (error) {
+      console.error('googleSheets getById Error:', error.response ? error.response.data : error.message);
+      res.status(500).json({ error: error.response ? error.response.data : error.message });
+    }
   } else {
     res.status(400).json({ error: 'Invalid action' });
   }
 });
+
 
 
 
@@ -215,8 +222,6 @@ app.delete('/api/clients/:clientId/notes/:noteId', async (req, res) => {
     res.status(500).json({ error: error.response ? error.response.data : error.message });
   }
 });
-
-
 
 
 app.listen(PORT, () => {

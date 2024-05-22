@@ -24,6 +24,7 @@
             <button id="newButton" class="btn btn-dark">New Chat</button>
         </div>
     </div>
+    <div id="alert-container"></div>
     <div class="container-main">
         <div class="sidebar py-4">
             <div class="d-flex justify-content-between align-items-center px-2 pb-1">
@@ -38,6 +39,7 @@
             <div id="sidebar"></div>
         </div>
         <div class="chat-container">
+            <div id="notification-container" class="notification-container"></div>
             <div id="chat-box" class="chat-box"></div>
             <div class="message-input-container">
                 <textarea id="message-input" placeholder="Type your message here..." class="message-input" rows="4"></textarea>
@@ -63,41 +65,53 @@
 
     <div class="modal fade" id="SessionNoteModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-content text-white bg-dark">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="SessionNoteModalLabel">Session Note</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body" id="SessionNoteModalBody">
-                    <form id="SessionNoteModalForm">
-                        <div class="mb-3 form-group ">
-                            <label class="form-label">Client:</label>
-                            <select name="clientId" class="form-control" id="SessionNoteModalClientNameSelect" required>
-                            </select>
-                        </div>
-                        <div class="form-group mb-3">
-                            <label class="form-label">Treatment plan</label>
-                            <select name="treatmentPlans" class="form-control" id="SessionNoteModalTreatmentPlanSelect"
-                                required>
-                                <option value="" disabled>No Option Available</option>
-                            </select>
-                        </div>
-                        <div class="mb-3 form-group">
-                            <label class="form-label">Therapist notes/Comments:</label>
-                            <textarea name="comments" class="form-control" id="SessionNoteModalComments"
-                                rows="4"></textarea>
-                        </div>
-                        <div class="d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary">Insert in Chat</button>
-                        </div>
-                    </form>
-                </div>
+          <div class="modal-content text-white bg-dark">
+            <div class="modal-header">
+              <h5 class="modal-title" id="SessionNoteModalLabel">Session Note</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <div class="modal-body" id="SessionNoteModalBody">
+              <form id="SessionNoteModalForm">
+                <div class="mb-3 form-group">
+                  <label class="form-label">Client:</label>
+                  <select name="clientId" class="form-control" id="SessionNoteModalClientNameSelect" required>
+                    <!-- Options will be populated dynamically -->
+                  </select>
+                </div>
+                <div class="form-group mb-3">
+                  <label class="form-label">Treatment plan</label>
+                  <select name="treatmentPlans" class="form-control" id="SessionNoteModalTreatmentPlanSelect" required>
+                    <!-- Options will be populated dynamically -->
+                  </select>
+                </div>
+                <div class="mb-3 form-group">
+                  <label class="form-label">Therapist notes/Comments:</label>
+                  <textarea name="comments" class="form-control" id="SessionNoteModalComments" rows="4"></textarea>
+                </div>
+                <div class="mb-3 form-group">
+                  <input type="checkbox" id="telehealthSessionCheckbox">
+                  <label for="telehealthSessionCheckbox">Telehealth Session</label>
+                </div>
+                <div class="form-group">
+                    <label for="modalities">Modalities:</label><br>
+                    <input type="checkbox" name="modalities" value="CBT"> CBT<br>
+                    <input type="checkbox" name="modalities" value="DBT"> DBT<br>
+                    <input type="checkbox" name="modalities" value="MI"> MI<br>
+                    <input type="checkbox" name="modalities" value="Person-centered"> Person-centered<br>
+                  </div>
+                  
+                <div class="d-flex justify-content-end gap-2">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                  <button type="submit" class="btn btn-primary">Insert in Chat</button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
-    </div>
+      </div>
+      
 
-    <div class="modal fade" id="SaveModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div class="modal fade" id="SaveModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content text-white bg-dark">
                 <div class="modal-header">
@@ -106,26 +120,23 @@
                 </div>
                 <div class="modal-body" id="SaveBody">
                     <form id="SaveModalForm">
-                        <div class="mb-3 form-group ">
+                        <div class="mb-3 form-group">
                             <label for="SaveModalDatepicker" class="form-label">Date:</label>
                             <input name="date" type="date" class="form-control" id="SaveModalDatepicker" required>
                         </div>
-                        <div class="mb-3 form-group ">
+                        <div class="mb-3 form-group">
                             <div class="d-flex justify-content-between align-items-center">
                                 <label class="form-label">Client:</label>
-                                <button type="button" class="btn text-white mb-2" id="SaveModalAddClientBtn">+
-                                    Add</button>
+                                <button type="button" class="btn text-white mb-2" id="SaveModalAddClientBtn">+ Add</button>
                             </div>
-                            <select name="clientId" class="form-control" id="SaveModalClientNameSelect" required>
-                            </select>
-                            <input name="clientName" type="text" id="SaveModalClientNameInput" class="form-control"
-                                style="display: none;" placeholder="Enter client name">
+                            <select name="clientId" class="form-control" id="SaveModalClientNameSelect" required></select>
+                            <input name="clientName" type="text" id="SaveModalClientNameInput" class="form-control" style="display: none;" placeholder="Enter client name">
                         </div>
-                        <div class="mb-3 form-group ">
+                        <div class="mb-3 form-group">
                             <label for="SaveModalPlanName" class="form-label">Plan Name:</label>
                             <input name="planName" type="text" class="form-control" id="SaveModalPlanName" required>
                         </div>
-                        <div class="mb-3 form-group ">
+                        <div class="mb-3 form-group">
                             <label class="form-label">Plan Type:</label>
                             <select name="planType" class="form-control" id="SaveModalPlanTypeSelect" required>
                                 <option value="" disabled selected>Select Plan Type</option>
@@ -136,8 +147,7 @@
                         </div>
                         <div class="mb-3 form-group" hidden>
                             <input name="planId" type="text" class="form-control" id="SaveModalPlanId" required>
-                            <textarea name="document" class="form-control" id="SaveModalDocument" rows="4"
-                                required></textarea>
+                            <textarea name="document" class="form-control" id="SaveModalDocument" rows="4" required></textarea>
                         </div>
                         <div class="d-flex justify-content-end gap-2">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -148,6 +158,8 @@
             </div>
         </div>
     </div>
+    
+    
 
     <div class="modal fade" id="DocumentModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -174,8 +186,8 @@
     <script src="/vendor/showdown/dist/showdown.min.js"></script>
     <script src="/vendor/@popperjs/core/dist/umd/popper.min.js"></script>
     <script src="/vendor/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-
-    <script type="module" src="/script.js"></script>
+    <script src="/dist/bundle.js"></script>    
+    <!--<script type="module" src="/script.js"></script>--> 
 </body>
 
 </html>
